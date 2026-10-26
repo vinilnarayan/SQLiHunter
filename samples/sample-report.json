@@ -1,0 +1,117 @@
+{
+  "tool": "SQLiHunter",
+  "owaspCategory": "A03:2021 - Injection",
+  "generatedAt": "2026-10-20T07:10:43.825838Z",
+  "findingCount": 3,
+  "findings": [
+    {
+      "id": "2df7e29f-56ff-4fed-a5ba-6ad2f7d4034c",
+      "timestamp": "2026-10-20T07:10:43.808348Z",
+      "title": "Error-based SQL injection in parameter \u0027id\u0027",
+      "type": "Error-based SQL injection",
+      "severity": "HIGH",
+      "confidence": "HIGH",
+      "host": "juice-shop.local",
+      "endpoint": "/rest/products/search",
+      "method": "GET",
+      "parameter": "q",
+      "parameterLocation": "URL query",
+      "databaseFamily": "SQLite",
+      "detectionMethod": "Active error-based: baseline vs. injected-probe signature diff",
+      "httpStatus": 500,
+      "owaspCategory": "A03:2021 - Injection",
+      "preconditions": "The tester is authorised to assess the target and the request reaches a code path that builds a SQL query.",
+      "evidenceSummary": "Injecting a single quote produced a SQLite tokenizer error absent from the baseline.\nTriggering probes: [\u0027\\\u0027\u0027, \"\u0027)\"]\nSignatures observed:\n  • [SQLite] SQLITE_ERROR: unrecognized token",
+      "limitations": "Confidence reflects corroboration across probes. Manual verification recommended before escalation.",
+      "cvssV4Vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:L/VA:N/SC:N/SI:N/SA:N",
+      "remediation": "Use parameterised queries / prepared statements for all database access. Never build SQL by concatenating untrusted input. Apply strict input validation (allow-lists) and least-privilege database accounts, and return generic error messages so database errors are not exposed to clients.",
+      "reproductionSteps": [
+        "Send baseline request GET /rest/products/search?q\u003dapple and note no SQL error.",
+        "Resend with q\u003dapple\u0027 and observe the SQLite error in the response."
+      ],
+      "references": [
+        "OWASP Top 10:2021 A03 Injection - https://owasp.org/Top10/A03_2021-Injection/",
+        "OWASP SQL Injection Prevention Cheat Sheet - https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html",
+        "CWE-89: Improper Neutralization of Special Elements used in an SQL Command - https://cwe.mitre.org/data/definitions/89.html"
+      ],
+      "evidence": {
+        "baselineRequest": "GET /rest/products/search?q\u003dapple HTTP/1.1\r\nHost: juice-shop.local\r\nCookie: ***REDACTED***\r\n\r\n",
+        "baselineResponse": "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n{\"status\":\"success\",\"data\":[...]}",
+        "testRequest": "GET /rest/products/search?q\u003dapple%27 HTTP/1.1\r\nHost: juice-shop.local\r\nCookie: ***REDACTED***\r\n\r\n",
+        "testResponse": "HTTP/1.1 500 Internal Server Error\r\nContent-Type: text/html\r\n\r\nSQLITE_ERROR: unrecognized token: \"***REDACTED***\""
+      }
+    },
+    {
+      "id": "ce3915c0-31a7-4700-bea1-9f8fc45cd6d1",
+      "timestamp": "2026-10-20T07:10:43.810790Z",
+      "title": "Boolean-based blind SQL injection in parameter \u0027category\u0027",
+      "type": "Boolean-based blind SQL injection",
+      "severity": "MEDIUM",
+      "confidence": "HIGH",
+      "host": "juice-shop.local",
+      "endpoint": "/rest/products",
+      "method": "GET",
+      "parameter": "category",
+      "parameterLocation": "URL query",
+      "databaseFamily": "Unknown",
+      "detectionMethod": "Active boolean-blind: normalized differential, repeated",
+      "httpStatus": 200,
+      "owaspCategory": "A03:2021 - Injection",
+      "preconditions": "The tester is authorised to assess the target and the request reaches a code path that builds a SQL query.",
+      "evidenceSummary": "Consistent boolean differential over 2 confirmations using: numeric context AND true/false\n  similarity(TRUE, baseline)\u003d0.991  similarity(FALSE, baseline)\u003d0.431",
+      "limitations": "Differential inference only; no data extracted.",
+      "cvssV4Vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:L/VI:N/VA:N/SC:N/SI:N/SA:N",
+      "remediation": "Use parameterised queries / prepared statements for all database access. Never build SQL by concatenating untrusted input. Apply strict input validation (allow-lists) and least-privilege database accounts, and return generic error messages so database errors are not exposed to clients.",
+      "reproductionSteps": [
+        "Send category\u003d1 AND 1\u003d1 (TRUE) -\u003e matches baseline.",
+        "Send category\u003d1 AND 1\u003d2 (FALSE) -\u003e response diverges."
+      ],
+      "references": [
+        "OWASP Top 10:2021 A03 Injection - https://owasp.org/Top10/A03_2021-Injection/",
+        "OWASP SQL Injection Prevention Cheat Sheet - https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html",
+        "CWE-89: Improper Neutralization of Special Elements used in an SQL Command - https://cwe.mitre.org/data/definitions/89.html"
+      ],
+      "evidence": {
+        "baselineRequest": "GET /rest/products?category\u003d1 HTTP/1.1\r\nHost: juice-shop.local\r\n\r\n",
+        "baselineResponse": "",
+        "testRequest": "",
+        "testResponse": "FALSE variant returned an empty product list."
+      }
+    },
+    {
+      "id": "ac6cc798-ed32-44e5-b082-99c915ded6ff",
+      "timestamp": "2026-10-20T07:10:43.810847Z",
+      "title": "Database error message disclosed in response",
+      "type": "Passive - Database error disclosure",
+      "severity": "LOW",
+      "confidence": "LOW",
+      "host": "juice-shop.local",
+      "endpoint": "/api/orders",
+      "method": "POST",
+      "parameter": "(response body)",
+      "parameterLocation": "Body (form-urlencoded)",
+      "databaseFamily": "MySQL/MariaDB",
+      "detectionMethod": "Passive response analysis (no traffic generated)",
+      "httpStatus": 500,
+      "owaspCategory": "A03:2021 - Injection",
+      "preconditions": "The tester is authorised to assess the target and the request reaches a code path that builds a SQL query.",
+      "evidenceSummary": "Database error signature observed: You have an error in your SQL syntax",
+      "limitations": "Passive only. Does not prove an injectable parameter.",
+      "remediation": "Use parameterised queries / prepared statements for all database access. Never build SQL by concatenating untrusted input. Apply strict input validation (allow-lists) and least-privilege database accounts, and return generic error messages so database errors are not exposed to clients.",
+      "reproductionSteps": [
+        "Review captured response for the database error text."
+      ],
+      "references": [
+        "OWASP Top 10:2021 A03 Injection - https://owasp.org/Top10/A03_2021-Injection/",
+        "OWASP SQL Injection Prevention Cheat Sheet - https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html",
+        "CWE-89: Improper Neutralization of Special Elements used in an SQL Command - https://cwe.mitre.org/data/definitions/89.html"
+      ],
+      "evidence": {
+        "baselineRequest": "",
+        "baselineResponse": "HTTP/1.1 500\r\n\r\nYou have an error in your SQL syntax; check the manual ...",
+        "testRequest": "",
+        "testResponse": ""
+      }
+    }
+  ]
+}

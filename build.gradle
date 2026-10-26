@@ -1,0 +1,50 @@
+plugins {
+    id 'java'
+    // Produces a single "fat" JAR that bundles runtime dependencies (e.g. Gson)
+    // while keeping the Montoya API out of the JAR (it is provided by Burp).
+    id 'com.gradleup.shadow' version '8.3.5'
+}
+
+group = 'com.sqlihunter'
+version = '1.0.0'
+
+java {
+    // Montoya 2024+/2025+ and recent Burp runtimes require Java 17+.
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // Montoya API is provided by the Burp runtime -> compileOnly, NOT bundled.
+    compileOnly 'net.portswigger.burp.extensions:montoya-api:2025.12'
+
+    // Bundled runtime dependency used only for safe JSON parsing/mutation.
+    implementation 'com.google.code.gson:gson:2.11.0'
+
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
+    // Montoya types are referenced by some tests via lightweight fakes; the API
+    // is on the test classpath but still not shipped in the extension JAR.
+    testImplementation 'net.portswigger.burp.extensions:montoya-api:2025.12'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+// The JAR that loads into Burp is the shaded one.
+shadowJar {
+    archiveClassifier.set('')          // overwrite the plain jar name
+    archiveBaseName.set('sqlihunter')
+    // Relocate Gson to avoid clashing with other extensions that bundle it.
+    relocate 'com.google.gson', 'com.sqlihunter.shaded.gson'
+    minimize()
+}
+
+// Make `gradle build` produce the loadable extension JAR.
+build.dependsOn shadowJar
+jar.enabled = false
